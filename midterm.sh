@@ -16,7 +16,7 @@ fi
 
 
 # Check if Python is installed
-if ! command -v python &> /dev/null; then
+if ! command -v python3 &> /dev/null; then
     echo "Python is not installed"
     exit 1
 fi
@@ -30,7 +30,7 @@ fi
 # Function to install a package using pip
 install_package() {
     package=$1
-    if ! python -c "import $package" &> /dev/null; then
+    if ! python3 -c "import $package" &> /dev/null; then
         echo "$package is not installed, installing..."
         if ! pip install $package; then
             echo "Failed to install $package"
@@ -44,7 +44,7 @@ install_package() {
 # Check and install required packages
 install_package black
 install_package pytest
-install_package pytest-html
+install_package pytest_html
 install_package pygments
 install_package jq
 
