@@ -157,34 +157,120 @@ function jq_update()
     mv $TEMP_PATH $IO_PATH
 }
 
+
+# Function to run pytest for a given commit
+run_pytest() {
+    local commit_hash=$1
+
+    # Checkout the commit
+    git checkout $commit_hash
+
+    # Run pytest and generate HTML report
+    if pytest --verbose --html=$PYTEST_REPORT_PATH --self-contained-html; then
+        PYTEST_RESULT=$?
+        echo "PYTEST SUCCEEDED $PYTEST_RESULT"
+    else
+        PYTEST_RESULT=$?
+        echo "PYTEST FAILED $PYTEST_RESULT"
+        cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
+    fi
+
+
+    # Return pytest result
+    return $PYTEST_RESULT
+}
+
+# Function to run black for a given commit
+run_black() {
+    local commit_hash=$1
+
+    # Checkout the commit
+    git checkout $commit_hash
+
+    # Run black and generate HTML report
+    if black --check --diff *.py > $BLACK_OUTPUT_PATH; then
+        BLACK_RESULT=$?
+        echo "BLACK SUCCEEDED $BLACK_RESULT"
+    else
+        BLACK_RESULT=$?
+        echo "BLACK FAILED $BLACK_RESULT"
+        cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
+    fi
+
+
+    # Return black result
+    return $BLACK_RESULT
+}
+
+
+
+
+
 git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}.git $REPOSITORY_PATH_CODE
 pushd $REPOSITORY_PATH_CODE
 git switch $REPOSITORY_BRANCH_CODE
-COMMIT_HASH=$(git rev-parse HEAD)
-AUTHOR_EMAIL=$(git log -n 1 --format="%ae" HEAD)
 
-if pytest --verbose --html=$PYTEST_REPORT_PATH --self-contained-html
-then
-    PYTEST_RESULT=$?
-    echo "PYTEST SUCCEEDED $PYTEST_RESULT"
-else
-    PYTEST_RESULT=$?
-    echo "PYTEST FAILED $PYTEST_RESULT"
-fi
 
-echo "\$PYTEST_RESULT = $PYTEST_RESULT \$BLACK_RESULT=$BLACK_RESULT"
+while true; do
+    # Fetch latest changes from the code repository
+    git fetch origin
 
-if black --check --diff *.py > $BLACK_OUTPUT_PATH
-then
-    BLACK_RESULT=$?
-    echo "BLACK SUCCEEDED $BLACK_RESULT"
-else
-    BLACK_RESULT=$?
-    echo "BLACK FAILED $BLACK_RESULT"
-    cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
-fi
+    # Get the commit hash of the last processed revision
+    last_commit_hash=$(git rev-parse HEAD)
 
-echo "\$PYTEST_RESULT = $PYTEST_RESULT \$BLACK_RESULT=$BLACK_RESULT"
+    # Get the list of new revisions
+    revisions=$(git rev-list $last_commit_hash..origin/$REPOSITORY_BRANCH_CODE --reverse)
+
+    for revision in $revisions; do
+        # Run pytest for the revision
+        run_pytest $revision
+        pytest_result=$?
+
+        # Run black for the revision
+        run_black $revision
+        black_result=$?
+
+
+        if ((pytest_result != 0)) || ((black_result != 0)); then
+        
+	AUTHOR_EMAIL=$(git log -n 1 --format="%ae" HEAD)
+	
+	popd
+
+git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
+
+pushd $REPOSITORY_PATH_REPORT
+
+git switch $REPOSITORY_BRANCH_REPORT
+REPORT_PATH="${COMMIT_HASH}-$(date +%s)"
+mkdir --parents $REPORT_PATH
+mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
+mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
+git add $REPORT_PATH
+git commit -m "$COMMIT_HASH report."
+git push
+
+popd
+
+rm -rf $REPOSITORY_PATH_CODE
+rm -rf $REPOSITORY_PATH_REPORT
+rm -rf $PYTEST_REPORT_PATH
+rm -rf $BLACK_REPORT_PATH
+	
+	else
+            # All checks passed
+
+            # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
+            git tag "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
+            git push --tags
+        fi
+    done
+
+    # Sleep for 15 seconds before checking for new revisions again
+    sleep 15
+done
+
+
 
 popd
 
