@@ -92,13 +92,32 @@ check_repository_exists() {
   fi
 }
 
+# Function to check if a branch exists in a repository
+check_branch_exists() {
+  local repo_url=$1
+  local branch_name=$2
+  local response=$(curl -s -o /dev/null -w "%{http_code}" "$repo_url/tree/$branch_name")
+
+  if [[ $response -eq 200 ]]; then
+    echo "Branch exists: $repo_url/tree/$branch_name"
+  else
+    echo "Branch does not exist: $repo_url/tree/$branch_name"
+    exit 1
+  fi
+}
+
+
 # Check CODE_REPO_URL
 check_repository_exists "$CODE_REPO_URL"
+
+# Check CODE_BRANCH_NAME within CODE_REPO_URL
+check_branch_exists "$CODE_REPO_URL" "$REPOSITORY_BRANCH_CODE"
 
 # Check REPORT_REPO_URL
 check_repository_exists "$REPORT_REPO_URL"
 
-
+# Check REPORT_BRANCH_NAME within REPORT_REPO_URL
+check_branch_exists "$REPORT_REPO_URL" "$REPOSITORY_BRANCH_REPORT"
 
 
 
