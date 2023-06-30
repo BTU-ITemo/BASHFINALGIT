@@ -15,6 +15,22 @@ else
 fi
 
 
+# Check if all arguments are provided
+if [ $# -ne 4 ]; then
+  echo "Error: 4 arguments required."
+  echo "Usage: ./mid-term.sh CODE_REPO_URL CODE_BRANCH_NAME REPORT_REPO_URL REPORT_BRANCH_NAME"
+  exit 1
+fi
+
+CODE_REPO_URL="$1"
+REPORT_REPO_URL="$3"
+REPOSITORY_OWNER=$(basename "$(dirname "$CODE_REPO_URL")")
+REPOSITORY_NAME_CODE=$(basename "$CODE_REPO_URL" .git)
+REPOSITORY_NAME_REPORT=$(basename "$REPORT_REPO_URL" .git)
+REPOSITORY_BRANCH_CODE="$2"
+REPOSITORY_BRANCH_REPORT="$4"
+
+
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
     echo "Python is not installed"
@@ -54,11 +70,6 @@ echo "All required packages are installed"
 
 cd "$(dirname "$0")"
 
-REPOSITORY_OWNER="BTU-ITemo"
-REPOSITORY_NAME_CODE="midterm-code"
-REPOSITORY_NAME_REPORT="BASH_FINAL_GIT_TEST"
-REPOSITORY_BRANCH_CODE="main"
-REPOSITORY_BRANCH_REPORT="main"
 REPOSITORY_PATH_CODE=$(mktemp --directory)
 REPOSITORY_PATH_REPORT=$(mktemp --directory)
 PYTEST_REPORT_PATH=$(mktemp)
