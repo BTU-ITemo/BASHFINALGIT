@@ -8,7 +8,11 @@ if [[ "${BASH_TRACE:-0}" == "1" ]]; then
     set -o xtrace
 fi
 
-
+if env | grep -q '^GITHUB_PERSONAL_ACCESS_TOKEN='; then
+    echo "GITHUB_PERSONAL_ACCESS_TOKEN is set"
+else
+    echo "GITHUB_PERSONAL_ACCESS_TOKEN is not set"
+fi
 
 
 cd "$(dirname "$0")"
