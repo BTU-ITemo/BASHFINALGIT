@@ -15,6 +15,43 @@ else
 fi
 
 
+# Check if Python is installed
+if ! command -v python &> /dev/null; then
+    echo "Python is not installed"
+    exit 1
+fi
+
+# Check if pip is installed
+if ! command -v pip &> /dev/null; then
+    echo "pip is not installed"
+    exit 1
+fi
+
+# Function to install a package using pip
+install_package() {
+    package=$1
+    if ! python -c "import $package" &> /dev/null; then
+        echo "$package is not installed, installing..."
+        if ! pip install $package; then
+            echo "Failed to install $package"
+            exit 1
+        fi
+    else
+        echo "$package is already installed"
+    fi
+}
+
+# Check and install required packages
+install_package black
+install_package pytest
+install_package pytest-html
+install_package pygments
+install_package jq
+
+echo "All required packages are installed"
+
+
+
 cd "$(dirname "$0")"
 
 REPOSITORY_OWNER="BTU-ITemo"
