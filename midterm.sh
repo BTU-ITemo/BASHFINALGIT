@@ -78,6 +78,31 @@ BLACK_REPORT_PATH=$(mktemp)
 PYTEST_RESULT=0
 BLACK_RESULT=0
 
+
+# Function to check if a repository exists
+check_repository_exists() {
+  local repo_url=$1
+  local response=$(curl -s -o /dev/null -w "%{http_code}" "$repo_url")
+
+  if [[ $response -eq 200 ]]; then
+    echo "Repository exists: $repo_url"
+  else
+    echo "Repository does not exist: $repo_url"
+    exit 1
+  fi
+}
+
+# Check CODE_REPO_URL
+check_repository_exists "$CODE_REPO_URL"
+
+# Check REPORT_REPO_URL
+check_repository_exists "$REPORT_REPO_URL"
+
+
+
+
+
+
 function github_api_get_request()
 {
     curl --request GET \
