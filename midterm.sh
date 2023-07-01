@@ -237,26 +237,84 @@ while true; do
 	
 	popd
 
-git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
+	git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
 
-pushd $REPOSITORY_PATH_REPORT
+	pushd $REPOSITORY_PATH_REPORT
 
-git switch $REPOSITORY_BRANCH_REPORT
-REPORT_PATH="${COMMIT_HASH}-$(date +%s)"
-mkdir --parents $REPORT_PATH
-mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
-mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
-git add $REPORT_PATH
-git commit -m "$COMMIT_HASH report."
-git push
+	git switch $REPOSITORY_BRANCH_REPORT
+	REPORT_PATH="${COMMIT_HASH}-$(date +%s)"
+	mkdir --parents $REPORT_PATH
+	mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
+	mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
+	git add $REPORT_PATH
+	git commit -m "$COMMIT_HASH report."
+	git push
 
-popd
+	popd
 
-rm -rf $REPOSITORY_PATH_CODE
-rm -rf $REPOSITORY_PATH_REPORT
-rm -rf $PYTEST_REPORT_PATH
-rm -rf $BLACK_REPORT_PATH
+	rm -rf $REPOSITORY_PATH_CODE
+	rm -rf $REPOSITORY_PATH_REPORT
+	rm -rf $PYTEST_REPORT_PATH
+	rm -rf $BLACK_REPORT_PATH
+
+
+	AUTHOR_USERNAME=""
+  	  # https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-users
+    	RESPONSE_PATH=$(mktemp)
+    	github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" $RESPONSE_PATH
+
+    	TOTAL_USER_COUNT=$(cat $RESPONSE_PATH | jq ".total_count")
+
+    	if [[ $TOTAL_USER_COUNT == 1 ]]
+    	then
+        	USER_JSON=$(cat $RESPONSE_PATH | jq ".items[0]")
+        	AUTHOR_USERNAME=$(cat $RESPONSE_PATH | jq --raw-output ".items[0].login")
+    	fi
+
+    	REQUEST_PATH=$(mktemp)
+    	RESPONSE_PATH=$(mktemp)
+    	echo "{}" > $REQUEST_PATH
+
+    	BODY+="Automatically generated message"
+
+    	if (( $PYTEST_RESULT != 0 ))
+    	then
+	        if (( $BLACK_RESULT != 0 ))
+	        then
+	            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
+	            BODY+="${COMMIT_HASH} failed unit and formatting tests."
+	            jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
+	        else
+	            TITLE="${COMMIT_HASH::7} failed unit tests."
+	            BODY+="${COMMIT_HASH} failed unit tests."
+	            jq_update $REQUEST_PATH '.labels = ["ci-pytest"]'
+	        fi
+    	else
+	        TITLE="${COMMIT_HASH::7} failed formatting test."
+	        BODY+="${COMMIT_HASH} failed formatting test."
+	        jq_update $REQUEST_PATH '.labels = ["ci-black"]'
+    	fi
+
+    	BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html"
+    	BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html"
+
+    	jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
+    	jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
+
+	if [[ ! -z $AUTHOR_USERNAME ]]
+	   then
+	       jq_update $REQUEST_PATH --arg username "$AUTHOR_USERNAME"  '.assignees = [$username]'
+	fi
 	
+	# https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+	github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
+	#cat $RESPONSE_PATH
+	cat $RESPONSE_PATH | jq ".html_url"
+	rm $RESPONSE_PATH
+	rm $REQUEST_PATH
+
+
+ 
 	else
             # All checks passed
 
@@ -269,98 +327,3 @@ rm -rf $BLACK_REPORT_PATH
     # Sleep for 15 seconds before checking for new revisions again
     sleep 15
 done
-
-
-
-popd
-
-git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
-
-pushd $REPOSITORY_PATH_REPORT
-
-git switch $REPOSITORY_BRANCH_REPORT
-REPORT_PATH="${COMMIT_HASH}-$(date +%s)"
-mkdir --parents $REPORT_PATH
-mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
-mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
-git add $REPORT_PATH
-git commit -m "$COMMIT_HASH report."
-git push
-
-popd
-
-rm -rf $REPOSITORY_PATH_CODE
-rm -rf $REPOSITORY_PATH_REPORT
-rm -rf $PYTEST_REPORT_PATH
-rm -rf $BLACK_REPORT_PATH
-
-if (( ($PYTEST_RESULT != 0) || ($BLACK_RESULT != 0) ))
-then
-    AUTHOR_USERNAME=""
-    # https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-users
-    RESPONSE_PATH=$(mktemp)
-    github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" $RESPONSE_PATH
-
-    TOTAL_USER_COUNT=$(cat $RESPONSE_PATH | jq ".total_count")
-
-    if [[ $TOTAL_USER_COUNT == 1 ]]
-    then
-        USER_JSON=$(cat $RESPONSE_PATH | jq ".items[0]")
-        AUTHOR_USERNAME=$(cat $RESPONSE_PATH | jq --raw-output ".items[0].login")
-    fi
-
-    REQUEST_PATH=$(mktemp)
-    RESPONSE_PATH=$(mktemp)
-    echo "{}" > $REQUEST_PATH
-
-    BODY+="Automatically generated message
-
-"
-
-    if (( $PYTEST_RESULT != 0 ))
-    then
-        if (( $BLACK_RESULT != 0 ))
-        then
-            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
-            BODY+="${COMMIT_HASH} failed unit and formatting tests.
-
-"
-            jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
-        else
-            TITLE="${COMMIT_HASH::7} failed unit tests."
-            BODY+="${COMMIT_HASH} failed unit tests.
-
-"
-            jq_update $REQUEST_PATH '.labels = ["ci-pytest"]'
-        fi
-    else
-        TITLE="${COMMIT_HASH::7} failed formatting test."
-        BODY+="${COMMIT_HASH} failed formatting test.
-"
-        jq_update $REQUEST_PATH '.labels = ["ci-black"]'
-    fi
-
-    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html
-
-"
-    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html
-
-"
-
-    jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
-    jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
-
-    if [[ ! -z $AUTHOR_USERNAME ]]
-    then
-        jq_update $REQUEST_PATH --arg username "$AUTHOR_USERNAME"  '.assignees = [$username]'
-    fi
-
-    # https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
-    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
-    #cat $RESPONSE_PATH
-    cat $RESPONSE_PATH | jq ".html_url"
-    rm $RESPONSE_PATH
-    rm $REQUEST_PATH
-else
-    echo "EVERYTHING OK, BYE!"
-fi
