@@ -203,8 +203,77 @@ run_black() {
 }
 
 
+# Function to upload pytest and black reports to GitHub Pages
+upload_report_to_github_pages() {
+    local revision=$1
 
+    git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
 
+    pushd $REPOSITORY_PATH_REPORT
+
+    git switch $REPOSITORY_BRANCH_REPORT
+    REPORT_PATH="${revision}-$(date +%s)"
+    mkdir -p $REPORT_PATH
+    mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
+    mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
+    git add $REPORT_PATH
+    git commit -m "${revision} report."
+    git push
+
+    popd
+
+    rm -rf $REPOSITORY_PATH_REPORT
+    rm -rf $PYTEST_REPORT_PATH
+    rm -rf $BLACK_REPORT_PATH
+}
+
+# Function to create a GitHub issue for a failed commit
+create_github_issue() {
+    local revision=$1
+    local pytest_result=$2
+    local black_result=$3
+    local author_username=$4
+
+    # Prepare the issue title and body based on the test results
+    local title=""
+    local body="Automatically generated message"
+
+    if ((pytest_result != 0)) && ((black_result != 0)); then
+        title="${revision::7} failed unit and formatting tests."
+        body+="${revision} failed unit and formatting tests."
+        labels=("ci-pytest" "ci-black")
+    elif ((pytest_result != 0)); then
+        title="${revision::7} failed unit tests."
+        body+="${revision} failed unit tests."
+        labels=("ci-pytest")
+    else
+        title="${revision::7} failed formatting test."
+        body+="${revision} failed formatting test."
+        labels=("ci-black")
+    fi
+
+    # Add links to the pytest and black reports
+    local report_url="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/${revision}/"
+    body+="\n\nPytest report: ${report_url}pytest.html"
+    body+="\nBlack report: ${report_url}black.html"
+
+    # Prepare the JSON payload for creating the GitHub issue
+    local request_path=$(mktemp)
+    local response_path=$(mktemp)
+    echo "{}" > $request_path
+
+    jq_update $request_path --arg title "$title" '.title = $title'
+    jq_update $request_path --arg body "$body" '.body = $body'
+    jq_update $request_path --argjson labels "$labels" '.labels = $labels'
+    jq_update $request_path --arg username "$author_username" '.assignees = [$username]'
+
+    # Create the GitHub issue
+    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $request_path $response_path
+    cat $response_path | jq ".html_url"
+
+    rm $response_path
+    rm $request_path
+}
 
 git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}.git $REPOSITORY_PATH_CODE
 pushd $REPOSITORY_PATH_CODE
@@ -230,92 +299,20 @@ while true; do
         run_black $revision
         black_result=$?
 
-
         if ((pytest_result != 0)) || ((black_result != 0)); then
-        
-	AUTHOR_EMAIL=$(git log -n 1 --format="%ae" HEAD)
-	
-	popd
+            # Upload pytest and black reports to GitHub pages
+            upload_report_to_github_pages $revision
 
-	git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
+            # Get the author email of the failed commit
+            author_email=$(git log -n 1 --format="%ae" $revision)
 
-	pushd $REPOSITORY_PATH_REPORT
+            # Find the author's GitHub username
+            author_username=$(get_github_username $author_email)
 
-	git switch $REPOSITORY_BRANCH_REPORT
-	REPORT_PATH="${COMMIT_HASH}-$(date +%s)"
-	mkdir --parents $REPORT_PATH
-	mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
-	mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
-	git add $REPORT_PATH
-	git commit -m "$COMMIT_HASH report."
-	git push
+            # Create a GitHub issue with detailed description of the failure
+            create_github_issue $revision $pytest_result $black_result $author_username
 
-	popd
-
-	rm -rf $REPOSITORY_PATH_CODE
-	rm -rf $REPOSITORY_PATH_REPORT
-	rm -rf $PYTEST_REPORT_PATH
-	rm -rf $BLACK_REPORT_PATH
-
-
-	AUTHOR_USERNAME=""
-  	  # https://docs.github.com/en/rest/search?apiVersion=2022-11-28#search-users
-    	RESPONSE_PATH=$(mktemp)
-    	github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" $RESPONSE_PATH
-
-    	TOTAL_USER_COUNT=$(cat $RESPONSE_PATH | jq ".total_count")
-
-    	if [[ $TOTAL_USER_COUNT == 1 ]]
-    	then
-        	USER_JSON=$(cat $RESPONSE_PATH | jq ".items[0]")
-        	AUTHOR_USERNAME=$(cat $RESPONSE_PATH | jq --raw-output ".items[0].login")
-    	fi
-
-    	REQUEST_PATH=$(mktemp)
-    	RESPONSE_PATH=$(mktemp)
-    	echo "{}" > $REQUEST_PATH
-
-    	BODY+="Automatically generated message"
-
-    	if (( $PYTEST_RESULT != 0 ))
-    	then
-	        if (( $BLACK_RESULT != 0 ))
-	        then
-	            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
-	            BODY+="${COMMIT_HASH} failed unit and formatting tests."
-	            jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
-	        else
-	            TITLE="${COMMIT_HASH::7} failed unit tests."
-	            BODY+="${COMMIT_HASH} failed unit tests."
-	            jq_update $REQUEST_PATH '.labels = ["ci-pytest"]'
-	        fi
-    	else
-	        TITLE="${COMMIT_HASH::7} failed formatting test."
-	        BODY+="${COMMIT_HASH} failed formatting test."
-	        jq_update $REQUEST_PATH '.labels = ["ci-black"]'
-    	fi
-
-    	BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html"
-    	BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html"
-
-    	jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
-    	jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
-
-	if [[ ! -z $AUTHOR_USERNAME ]]
-	   then
-	       jq_update $REQUEST_PATH --arg username "$AUTHOR_USERNAME"  '.assignees = [$username]'
-	fi
-	
-	# https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
-	github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
-	#cat $RESPONSE_PATH
-	cat $RESPONSE_PATH | jq ".html_url"
-	rm $RESPONSE_PATH
-	rm $REQUEST_PATH
-
-
- 
-	else
+        else
             # All checks passed
 
             # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
