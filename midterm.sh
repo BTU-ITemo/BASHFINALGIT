@@ -299,63 +299,63 @@ while true; do
         black_result=$?
 
 	if ((pytest_result != 0)) || ((black_result != 0)); then
-    # Upload pytest and black reports to GitHub pages
-    upload_report_to_github_pages "$revision"
-
-    # Get the author email of the failed commit
-    author_email=$(git log -n 1 --format="%ae" "$revision")
-
-    AUTHOR_USERNAME=""
-
-    # Make API request to search for users
-    RESPONSE_PATH=$(mktemp)
-    github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" "$RESPONSE_PATH"
-
-    TOTAL_USER_COUNT=$(jq -r '.total_count' "$RESPONSE_PATH")
-
-    if [[ $TOTAL_USER_COUNT == 1 ]]; then
-        USER_JSON=$(jq '.items[0]' "$RESPONSE_PATH")
-        AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
-    fi
-
-    REQUEST_PATH=$(mktemp)
-    RESPONSE_PATH=$(mktemp)
-    echo "{}" > "$REQUEST_PATH"
-
-    BODY+="Automatically generated message\n\n"
-
-    if ((pytest_result != 0)); then
-        if ((black_result != 0)); then
-            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
-            BODY+="${COMMIT_HASH} failed unit and formatting tests.\n\n"
-            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
-        else
-            TITLE="${COMMIT_HASH::7} failed unit tests."
-            BODY+="${COMMIT_HASH} failed unit tests.\n\n"
-            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
-        fi
-    else
-        TITLE="${COMMIT_HASH::7} failed formatting test."
-        BODY+="${COMMIT_HASH} failed formatting test.\n\n"
-        jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
-    fi
-
-    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html\n"
-    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html\n\n"
-
-    jq_update "$REQUEST_PATH" --arg title "$TITLE" '.title = $title'
-    jq_update "$REQUEST_PATH" --arg body "$BODY" '.body = $body'
-
-    if [[ ! -z $AUTHOR_USERNAME ]]; then
-        jq_update "$REQUEST_PATH" --arg username "$AUTHOR_USERNAME" '.assignees = [$username]'
-    fi
-
-    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" "$REQUEST_PATH" "$RESPONSE_PATH"
-    cat "$RESPONSE_PATH" | jq -r '.html_url'
-
-    rm "$RESPONSE_PATH"
-    rm "$REQUEST_PATH"
-fi
+		    # Upload pytest and black reports to GitHub pages
+		    upload_report_to_github_pages "$revision"
+		
+		    # Get the author email of the failed commit
+		    author_email=$(git log -n 1 --format="%ae" "$revision")
+		
+		    AUTHOR_USERNAME=""
+		
+		    # Make API request to search for users
+		    RESPONSE_PATH=$(mktemp)
+		    github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" "$RESPONSE_PATH"
+		
+		    TOTAL_USER_COUNT=$(jq -r '.total_count' "$RESPONSE_PATH")
+		
+		    if [[ $TOTAL_USER_COUNT == 1 ]]; then
+		        USER_JSON=$(jq '.items[0]' "$RESPONSE_PATH")
+		        AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
+		    fi
+		
+		    REQUEST_PATH=$(mktemp)
+		    RESPONSE_PATH=$(mktemp)
+		    echo "{}" > "$REQUEST_PATH"
+		
+		    BODY+="Automatically generated message\n\n"
+		
+		    if ((pytest_result != 0)); then
+		        if ((black_result != 0)); then
+		            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
+		            BODY+="${COMMIT_HASH} failed unit and formatting tests.\n\n"
+		            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
+		        else
+		            TITLE="${COMMIT_HASH::7} failed unit tests."
+		            BODY+="${COMMIT_HASH} failed unit tests.\n\n"
+		            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
+		        fi
+		    else
+		        TITLE="${COMMIT_HASH::7} failed formatting test."
+		        BODY+="${COMMIT_HASH} failed formatting test.\n\n"
+		        jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
+		    fi
+		
+		    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html\n"
+		    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html\n\n"
+		
+		    jq_update "$REQUEST_PATH" --arg title "$TITLE" '.title = $title'
+		    jq_update "$REQUEST_PATH" --arg body "$BODY" '.body = $body'
+		
+		    if [[ ! -z $AUTHOR_USERNAME ]]; then
+		        jq_update "$REQUEST_PATH" --arg username "$AUTHOR_USERNAME" '.assignees = [$username]'
+		    fi
+		
+		    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" "$REQUEST_PATH" "$RESPONSE_PATH"
+		    cat "$RESPONSE_PATH" | jq -r '.html_url'
+		
+		    rm "$RESPONSE_PATH"
+		    rm "$REQUEST_PATH"
+		fi
 
 
 
@@ -367,15 +367,15 @@ fi
             # # Create a GitHub issue with detailed description of the failure
             # create_github_issue $revision $pytest_result $black_result $author_username
 
-        else
-            # All checks passed
-	    echo "aqane vart8"
-            # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
-            git tag "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
-            git push --tags
-        fi
-    done
-
-    # Sleep for 15 seconds before checking for new revisions again
-    sleep 15
+	        else
+	            # All checks passed
+		    echo "aqane vart8"
+	            # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
+	            git tag "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
+	            git push --tags
+	        fi
+	    done
+	
+	    # Sleep for 15 seconds before checking for new revisions again
+	    sleep 15
 done
