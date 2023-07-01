@@ -355,11 +355,7 @@ while true; do
 
                     rm "$RESPONSE_PATH"
                     rm "$REQUEST_PATH"
-        fi
-
-
-
-     
+             
 
             # # Find the author's GitHub username
             # author_username=$(get_github_username $author_email)
