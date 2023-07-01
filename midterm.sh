@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o errexit
+#set -o errexit
 set -o nounset
 set -o pipefail
 
@@ -196,8 +196,7 @@ run_black() {
         echo "BLACK FAILED $BLACK_RESULT"
         cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
     fi
-
-
+    echo "$BLACK_REPORT_PATH"
     # Return black result
     return $BLACK_RESULT
 }
@@ -296,11 +295,13 @@ while true; do
         pytest_result=$?
 
         # Run black for the revision
+        echo "aqane vart1"
         run_black $revision
         black_result=$?
-
+	echo "aqane vart3"
         if ((pytest_result != 0)) || ((black_result != 0)); then
             # Upload pytest and black reports to GitHub pages
+	    echo "aqane vart"
             upload_report_to_github_pages $revision
 
             # Get the author email of the failed commit
@@ -314,7 +315,7 @@ while true; do
 
         else
             # All checks passed
-
+	    echo "aqane vart8"
             # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
             git tag "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
             git push --tags
