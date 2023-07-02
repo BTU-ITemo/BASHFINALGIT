@@ -172,7 +172,7 @@ run_pytest() {
     else
         PYTEST_RESULT=$?
         echo "PYTEST FAILED $PYTEST_RESULT"
-        cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
+       # cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
     fi
 
 
@@ -196,7 +196,7 @@ run_black() {
         echo "BLACK FAILED $BLACK_RESULT"
         cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
     fi
-    echo "$BLACK_REPORT_PATH"
+    #echo "$BLACK_REPORT_PATH"
     # Return black result
     return $BLACK_RESULT
 }
@@ -274,6 +274,19 @@ create_github_issue() {
     rm $request_path
 }
 
+
+get_github_username() {
+    local email=$1
+    local response=$(curl -s -H "Authorization: token $GITHUB_PERSONAL_ACCESS_TOKEN" \
+        "https://api.github.com/search/users?q=$email+in:email")
+
+    local username=$(echo "$response" | jq -r '.items[0].login')
+    echo "$username"
+}
+
+
+
+
 git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}.git $REPOSITORY_PATH_CODE
 pushd $REPOSITORY_PATH_CODE
 git switch $REPOSITORY_BRANCH_CODE
@@ -302,11 +315,17 @@ while true; do
                     # Upload pytest and black reports to GitHub pages
                     upload_report_to_github_pages "$revision"
 
-                    # Get the author email of the failed commit
+
+		    # Get the author email of the failed commit
                     author_email=$(git log -n 1 --format="%ae" "$revision")
+		    echo "author email $author_email"
                     AUTHOR_EMAIL=$author_email
                     AUTHOR_USERNAME=""
-                    COMMIT_HASH=$revision
+		    echo "username - $AUTHOR_USERNAME"
+                    
+		    author_username=$(get_github_username "$author_email")
+		    echo "$author_username"
+		    COMMIT_HASH=$revision
 
                     # Make API request to search for users
                     RESPONSE_PATH=$(mktemp)
@@ -318,6 +337,12 @@ while true; do
                         USER_JSON=$(jq '.items[0]' "$RESPONSE_PATH")
                         AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
                     fi
+
+		    echo "username gamotvili - $AUTHOR_USERNAME"
+
+		    #AUTHOR_USERNAME=$author_username
+
+		    echo "username statikur - $AUTHOR_USERNAME"
 
                     REQUEST_PATH=$(mktemp)
                     RESPONSE_PATH=$(mktemp)
