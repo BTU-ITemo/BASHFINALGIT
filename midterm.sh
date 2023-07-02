@@ -348,26 +348,32 @@ while true; do
                     RESPONSE_PATH=$(mktemp)
                     echo "{}" > "$REQUEST_PATH"
 
-                    BODY+="Automatically generated message\n\n"
+                    BODY+="Automatically generated message
+        "
 
                     if ((pytest_result != 0)); then
                         if ((black_result != 0)); then
                             TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
-                            BODY+="${COMMIT_HASH} failed unit and formatting tests.\n\n"
+                            BODY+="${COMMIT_HASH} failed unit and formatting tests.
+        "
                             jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
                         else
                             TITLE="${COMMIT_HASH::7} failed unit tests."
-                            BODY+="${COMMIT_HASH} failed unit tests.\n\n"
+                            BODY+="${COMMIT_HASH} failed unit tests.
+        "
                             jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
                         fi
                     else
                         TITLE="${COMMIT_HASH::7} failed formatting test."
-                        BODY+="${COMMIT_HASH} failed formatting test.\n\n"
+                        BODY+="${COMMIT_HASH} failed formatting test.
+        "
                         jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
                     fi
 
-                    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html\n"
-                    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html\n\n"
+                    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html
+        "
+                    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html
+        "
 
                     jq_update "$REQUEST_PATH" --arg title "$TITLE" '.title = $title'
                     jq_update "$REQUEST_PATH" --arg body "$BODY" '.body = $body'
