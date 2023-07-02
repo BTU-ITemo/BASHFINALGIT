@@ -144,7 +144,7 @@ function github_post_request()
         --silent \
         --output "$3" \
         --data-binary "@$2" \
-        "$1"
+        "$1" | tee /dev/tty > /dev/null
         #--dump-header /dev/stderr \
 }
 
@@ -304,8 +304,9 @@ while true; do
 
                     # Get the author email of the failed commit
                     author_email=$(git log -n 1 --format="%ae" "$revision")
-
+                    AUTHOR_EMAIL=$author_email
                     AUTHOR_USERNAME=""
+                    COMMIT_HASH=$revision
 
                     # Make API request to search for users
                     RESPONSE_PATH=$(mktemp)
@@ -350,6 +351,12 @@ while true; do
                         jq_update "$REQUEST_PATH" --arg username "$AUTHOR_USERNAME" '.assignees = [$username]'
                     fi
 
+                    echo "aqane"
+                    echo "$REQUEST_PATH"
+                    echo "$AUTHOR_USERNAME"
+                    echo "$RESPONSE_PATH"
+                    echo "!!!!!!!!!!!!!"
+
                     github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" "$REQUEST_PATH" "$RESPONSE_PATH"
                     cat "$RESPONSE_PATH" | jq -r '.html_url'
 
@@ -367,8 +374,8 @@ while true; do
                     # All checks passed
                     echo "aqane vart8"
                     # Mark the commit with a "${CODE_BRANCH_NAME}-ci-success" tag
-                    git tag "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
-                    git push --tags
+                    git tag --force "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
+                    git push --force --tags
         fi
     done
 
