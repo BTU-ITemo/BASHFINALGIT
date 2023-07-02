@@ -32,16 +32,16 @@ REPOSITORY_BRANCH_REPORT="$4"
 
 
 # Check if Python is installed
-if ! command -v python &> /dev/null; then
-    echo "Python is not installed"
-    exit 1
-fi
+# if ! command -v python &> /dev/null; then
+#     echo "Python is not installed"
+#     exit 1
+# fi
 
-# Check if pip is installed
-if ! command -v pip &> /dev/null; then
-    echo "pip is not installed"
-    exit 1
-fi
+# # Check if pip is installed
+# if ! command -v pip &> /dev/null; then
+#     echo "pip is not installed"
+#     exit 1
+# fi
 
 # Function to install a package using pip
 install_package() {
