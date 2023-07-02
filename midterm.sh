@@ -32,7 +32,7 @@ REPOSITORY_BRANCH_REPORT="$4"
 
 
 # Check if Python is installed
-if ! command -v python3 &> /dev/null; then
+if ! command -v python &> /dev/null; then
     echo "Python is not installed"
     exit 1
 fi
@@ -57,12 +57,12 @@ install_package() {
     fi
 }
 
-# Check and install required packages
-install_package black
-install_package pytest
-install_package pytest_html
-install_package pygments
-install_package jq
+# # Check and install required packages
+# install_package black
+# install_package pytest
+# install_package pytest_html
+# install_package pygments
+# install_package jq
 
 echo "All required packages are installed"
 
@@ -79,7 +79,7 @@ PYTEST_RESULT=0
 BLACK_RESULT=0
 
 
-# Function to check if a repository exists
+Function to check if a repository exists
 check_repository_exists() {
   local repo_url=$1
   local response=$(curl -s -o /dev/null -w "%{http_code}" "$repo_url")
@@ -107,7 +107,7 @@ check_branch_exists() {
 }
 
 
-# Check CODE_REPO_URL
+Check CODE_REPO_URL
 check_repository_exists "$CODE_REPO_URL"
 
 # Check CODE_BRANCH_NAME within CODE_REPO_URL
@@ -253,8 +253,8 @@ create_github_issue() {
 
     # Add links to the pytest and black reports
     local report_url="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/${revision}/"
-    body+="\n\nPytest report: ${report_url}pytest.html"
-    body+="\nBlack report: ${report_url}black.html"
+    body+="Pytest report: ${report_url}pytest.html"
+    body+="Black report: ${report_url}black.html"
 
     # Prepare the JSON payload for creating the GitHub issue
     local request_path=$(mktemp)
@@ -316,16 +316,16 @@ while true; do
                     upload_report_to_github_pages "$revision"
 
 
-		    # Get the author email of the failed commit
+                    # Get the author email of the failed commit
                     author_email=$(git log -n 1 --format="%ae" "$revision")
-		    echo "author email $author_email"
+                    echo "author email $author_email"
                     AUTHOR_EMAIL=$author_email
                     AUTHOR_USERNAME=""
-		    echo "username - $AUTHOR_USERNAME"
+                    echo "username - $AUTHOR_USERNAME"
                     
-		    author_username=$(get_github_username "$author_email")
-		    echo "$author_username"
-		    COMMIT_HASH=$revision
+                    author_username=$(get_github_username "$author_email")
+                    echo "$author_username"
+                    COMMIT_HASH=$revision
 
                     # Make API request to search for users
                     RESPONSE_PATH=$(mktemp)
@@ -338,35 +338,35 @@ while true; do
                         AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
                     fi
 
-		    echo "username gamotvili - $AUTHOR_USERNAME"
+                    echo "username gamotvili - $AUTHOR_USERNAME"
 
-		    #AUTHOR_USERNAME=$author_username
+                    #AUTHOR_USERNAME=$author_username
 
-		    echo "username statikur - $AUTHOR_USERNAME"
+                    echo "username statikur - $AUTHOR_USERNAME"
 
                     REQUEST_PATH=$(mktemp)
                     RESPONSE_PATH=$(mktemp)
                     echo "{}" > "$REQUEST_PATH"
 
-                    BODY+="Automatically generated message
-        "
+                    BODY+="Automatically generated message"
 
                     if ((pytest_result != 0)); then
                         if ((black_result != 0)); then
-                            TITLE="${COMMIT_HASH::7} failed unit and formatting tests."
-                            BODY+="${COMMIT_HASH} failed unit and formatting tests.
+                            TITLE="${COMMIT_HASH::7} failed unit and formatting tests.
+        "
+                            BODY+="${COMMIT_HASH} failed unit and formatting tests
         "
                             jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
                         else
-                            TITLE="${COMMIT_HASH::7} failed unit tests."
-                            BODY+="${COMMIT_HASH} failed unit tests.
+                            TITLE="${COMMIT_HASH::7} failed unit tests.
+        "
+                            BODY+="${COMMIT_HASH} failed unit tests
         "
                             jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
                         fi
                     else
                         TITLE="${COMMIT_HASH::7} failed formatting test."
-                        BODY+="${COMMIT_HASH} failed formatting test.
-        "
+                        BODY+="${COMMIT_HASH} failed formatting test"
                         jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
                     fi
 
