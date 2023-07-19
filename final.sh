@@ -129,157 +129,156 @@ BLACK_RESULT=0
 
 
 
-# function github_api_get_request()
-# {
-#     curl --request GET \
-#         --header "Accept: application/vnd.github+json" \
-#         --header "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
-#         --header "X-GitHub-Api-Version: 2022-11-28" \
-#         --output "$2" \
-#         --silent \
-#         "$1"
-#         #--dump-header /dev/stderr \
-# }
+function github_api_get_request()
+{
+    curl --request GET \
+        --header "Accept: application/vnd.github+json" \
+        --header "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        --output "$2" \
+        --silent \
+        "$1"
+        #--dump-header /dev/stderr \
+}
 
-# function github_post_request()
-# {
-#     curl --request POST \
-#         --header "Accept: application/vnd.github+json" \
-#         --header "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
-#         --header "X-GitHub-Api-Version: 2022-11-28" \
-#         --header "Content-Type: application/json" \
-#         --silent \
-#         --output "$3" \
-#         --data-binary "@$2" \
-#         "$1" | tee /dev/tty > /dev/null
-#         #--dump-header /dev/stderr \
-# }
+function github_post_request()
+{
+    curl --request POST \
+        --header "Accept: application/vnd.github+json" \
+        --header "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        --header "Content-Type: application/json" \
+        --silent \
+        --output "$3" \
+        --data-binary "@$2" \
+        "$1" | tee /dev/tty > /dev/null
+        #--dump-header /dev/stderr \
+}
 
-# function jq_update()
-# {
-#     local IO_PATH=$1
-#     local TEMP_PATH=$(mktemp)
-#     shift
-#     cat $IO_PATH | jq "$@" > $TEMP_PATH
-#     mv $TEMP_PATH $IO_PATH
-# }
-
-
-# # Function to run pytest for a given commit
-# run_pytest() {
-#     local commit_hash=$1
-
-#     # Checkout the commit
-#     git checkout $commit_hash
-
-#     # Run pytest and generate HTML report
-#     if pytest --verbose --html=$PYTEST_REPORT_PATH --self-contained-html; then
-#         PYTEST_RESULT=$?
-#         echo "PYTEST SUCCEEDED $PYTEST_RESULT"
-#     else
-#         PYTEST_RESULT=$?
-#         echo "PYTEST FAILED $PYTEST_RESULT"
-#        # cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
-#     fi
+function jq_update()
+{
+    local IO_PATH=$1
+    local TEMP_PATH=$(mktemp)
+    shift
+    cat $IO_PATH | jq "$@" > $TEMP_PATH
+    mv $TEMP_PATH $IO_PATH
+}
 
 
-#     # Return pytest result
-#     return $PYTEST_RESULT
-# }
+# Function to run pytest for a given commit
+run_pytest() {
+    local commit_hash=$1
 
-# # Function to run black for a given commit
-# run_black() {
-#     local commit_hash=$1
+    # Checkout the commit
+    git checkout $commit_hash
 
-#     # Checkout the commit
-#     git checkout $commit_hash
-
-#     # Run black and generate HTML report
-#     if black --check --diff *.py > $BLACK_OUTPUT_PATH; then
-#         BLACK_RESULT=$?
-#         echo "BLACK SUCCEEDED $BLACK_RESULT"
-#     else
-#         BLACK_RESULT=$?
-#         echo "BLACK FAILED $BLACK_RESULT"
-#         cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
-#     fi
-#     #echo "$BLACK_REPORT_PATH"
-#     # Return black result
-#     return $BLACK_RESULT
-# }
+    # Run pytest and generate HTML report
+    if pytest --verbose --html=$PYTEST_REPORT_PATH --self-contained-html; then
+        PYTEST_RESULT=$?
+        echo "PYTEST SUCCEEDED $PYTEST_RESULT"
+    else
+        PYTEST_RESULT=$?
+        echo "PYTEST FAILED $PYTEST_RESULT"
+       # cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
+    fi
 
 
-# # Function to upload pytest and black reports to GitHub Pages
-# upload_report_to_github_pages() {
-#     local revision=$1
+    # Return pytest result
+    return $PYTEST_RESULT
+}
 
-#     git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_REPORT}.git $REPOSITORY_PATH_REPORT
+# Function to run black for a given commit
+run_black() {
+    local commit_hash=$1
 
-#     pushd $REPOSITORY_PATH_REPORT
+    # Checkout the commit
+    git checkout $commit_hash
 
-#     git switch $REPOSITORY_BRANCH_REPORT
-#     REPORT_PATH="${revision}-$(date +%s)"
-#     mkdir -p $REPORT_PATH
-#     mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
-#     mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
-#     git add $REPORT_PATH
-#     git commit -m "${revision} report."
-#     git push
+    # Run black and generate HTML report
+    if black --check --diff *.py > $BLACK_OUTPUT_PATH; then
+        BLACK_RESULT=$?
+        echo "BLACK SUCCEEDED $BLACK_RESULT"
+    else
+        BLACK_RESULT=$?
+        echo "BLACK FAILED $BLACK_RESULT"
+        cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
+    fi
+    #echo "$BLACK_REPORT_PATH"
+    # Return black result
+    return $BLACK_RESULT
+}
 
-#     popd
 
-#     rm -rf $REPOSITORY_PATH_REPORT
-#     rm -rf $PYTEST_REPORT_PATH
-#     rm -rf $BLACK_REPORT_PATH
-# }
+# Function to upload pytest and black reports to GitHub Pages
+upload_report_to_github_pages() {
+    local revision=$1
 
-# # Function to create a GitHub issue for a failed commit
-# create_github_issue() {
-#     local revision=$1
-#     local pytest_result=$2
-#     local black_result=$3
-#     local author_username=$4
+    git clone $HTML_REPO_URL $REPOSITORY_PATH_REPORT
+    pushd $REPOSITORY_PATH_REPORT
+    git switch $HTML_BRANCH_NAME
 
-#     # Prepare the issue title and body based on the test results
-#     local title=""
-#     local body="Automatically generated message"
+    REPORT_PATH="${revision}-$(date +%s)"
+    mkdir -p $REPORT_PATH
+    mv $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
+    mv $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
+    git add $REPORT_PATH
+    git commit -m "${revision} report."
+    git push
 
-#     if ((pytest_result != 0)) && ((black_result != 0)); then
-#         title="${revision::7} failed unit and formatting tests."
-#         body+="${revision} failed unit and formatting tests."
-#         labels=("ci-pytest" "ci-black")
-#     elif ((pytest_result != 0)); then
-#         title="${revision::7} failed unit tests."
-#         body+="${revision} failed unit tests."
-#         labels=("ci-pytest")
-#     else
-#         title="${revision::7} failed formatting test."
-#         body+="${revision} failed formatting test."
-#         labels=("ci-black")
-#     fi
+    popd
 
-#     # Add links to the pytest and black reports
-#     local report_url="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/${revision}/"
-#     body+="Pytest report: ${report_url}pytest.html"
-#     body+="Black report: ${report_url}black.html"
+    rm -rf $REPOSITORY_PATH_REPORT
+    rm -rf $PYTEST_REPORT_PATH
+    rm -rf $BLACK_REPORT_PATH
+}
 
-#     # Prepare the JSON payload for creating the GitHub issue
-#     local request_path=$(mktemp)
-#     local response_path=$(mktemp)
-#     echo "{}" > $request_path
+# Function to create a GitHub issue for a failed commit
+create_github_issue() {
+    local revision=$1
+    local pytest_result=$2
+    local black_result=$3
+    local author_username=$4
 
-#     jq_update $request_path --arg title "$title" '.title = $title'
-#     jq_update $request_path --arg body "$body" '.body = $body'
-#     jq_update $request_path --argjson labels "$labels" '.labels = $labels'
-#     jq_update $request_path --arg username "$author_username" '.assignees = [$username]'
+    # Prepare the issue title and body based on the test results
+    local title=""
+    local body="Automatically generated message"
 
-#     # Create the GitHub issue
-#     github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $request_path $response_path
-#     cat $response_path | jq ".html_url"
+    if ((pytest_result != 0)) && ((black_result != 0)); then
+        title="${revision::7} failed unit and formatting tests."
+        body+="${revision} failed unit and formatting tests."
+        labels=("ci-pytest" "ci-black")
+    elif ((pytest_result != 0)); then
+        title="${revision::7} failed unit tests."
+        body+="${revision} failed unit tests."
+        labels=("ci-pytest")
+    else
+        title="${revision::7} failed formatting test."
+        body+="${revision} failed formatting test."
+        labels=("ci-black")
+    fi
 
-#     rm $response_path
-#     rm $request_path
-# }
+    # Add links to the pytest and black reports
+    local report_url="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/${revision}/"
+    body+="Pytest report: ${report_url}pytest.html"
+    body+="Black report: ${report_url}black.html"
+
+    # Prepare the JSON payload for creating the GitHub issue
+    local request_path=$(mktemp)
+    local response_path=$(mktemp)
+    echo "{}" > $request_path
+
+    jq_update $request_path --arg title "$title" '.title = $title'
+    jq_update $request_path --arg body "$body" '.body = $body'
+    jq_update $request_path --argjson labels "$labels" '.labels = $labels'
+    jq_update $request_path --arg username "$author_username" '.assignees = [$username]'
+
+    # Create the GitHub issue
+    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $request_path $response_path
+    cat $response_path | jq ".html_url"
+
+    rm $response_path
+    rm $request_path
+}
 
 
 # get_github_username() {
@@ -311,7 +310,116 @@ while true; do
 
     # Print the list of revisions
     echo "$revisions"
+
+        for revision in $revisions; do
+        # Run pytest for the revision
+        run_pytest $revision
+        pytest_result=$?
+
+        # Run black for the revision
+        run_black $revision
+        black_result=$?
+
+        if ((pytest_result != 0)) || ((black_result != 0)); then
+                    # Upload pytest and black reports to GitHub pages
+                    upload_report_to_github_pages "$revision"
+
+
+                    # Get the author email of the failed commit
+                    author_email=$(git log -n 1 --format="%ae" "$revision")
+                    echo "author email $author_email"
+                    AUTHOR_EMAIL=$author_email
+                    AUTHOR_USERNAME=""
+                    echo "username - $AUTHOR_USERNAME"
+                    
+                    author_username=$(get_github_username "$author_email")
+                    echo "$author_username"
+                    COMMIT_HASH=$revision
+
+                    # Make API request to search for users
+                    RESPONSE_PATH=$(mktemp)
+                    github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" "$RESPONSE_PATH"
+
+                    TOTAL_USER_COUNT=$(jq -r '.total_count' "$RESPONSE_PATH")
+
+                    if [[ $TOTAL_USER_COUNT == 1 ]]; then
+                        USER_JSON=$(jq '.items[0]' "$RESPONSE_PATH")
+                        AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
+                    fi
+
+                    echo "username gamotvili - $AUTHOR_USERNAME"
+
+                    #AUTHOR_USERNAME=$author_username
+
+                    echo "username statikur - $AUTHOR_USERNAME"
+
+                    REQUEST_PATH=$(mktemp)
+                    RESPONSE_PATH=$(mktemp)
+                    echo "{}" > "$REQUEST_PATH"
+
+                    BODY+="Automatically generated message"
+
+                    if ((pytest_result != 0)); then
+                        if ((black_result != 0)); then
+                            TITLE="${COMMIT_HASH::7} failed unit and formatting tests.
+        "
+                            BODY+="${COMMIT_HASH} failed unit and formatting tests
+        "
+                            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
+                        else
+                            TITLE="${COMMIT_HASH::7} failed unit tests.
+        "
+                            BODY+="${COMMIT_HASH} failed unit tests
+        "
+                            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
+                        fi
+                    else
+                        TITLE="${COMMIT_HASH::7} failed formatting test."
+                        BODY+="${COMMIT_HASH} failed formatting test"
+                        jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
+                    fi
+
+                    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html
+        "
+                    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html
+        "
+
+                    jq_update "$REQUEST_PATH" --arg title "$TITLE" '.title = $title'
+                    jq_update "$REQUEST_PATH" --arg body "$BODY" '.body = $body'
+
+                    if [[ ! -z $AUTHOR_USERNAME ]]; then
+                        jq_update "$REQUEST_PATH" --arg username "$AUTHOR_USERNAME" '.assignees = [$username]'
+                    fi
+
+                    echo "aqane"
+                    echo "$REQUEST_PATH"
+                    echo "$AUTHOR_USERNAME"
+                    echo "$RESPONSE_PATH"
+                    echo "!!!!!!!!!!!!!"
+
+                    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" "$REQUEST_PATH" "$RESPONSE_PATH"
+                    cat "$RESPONSE_PATH" | jq -r '.html_url'
+
+                    rm "$RESPONSE_PATH"
+                    rm "$REQUEST_PATH"
+             
+
+            # # Find the author's GitHub username
+            # author_username=$(get_github_username $author_email)
+
+            # # Create a GitHub issue with detailed description of the failure
+            # create_github_issue $revision $pytest_result $black_result $author_username
+
+        else
+                    # All checks passed
+                    echo "aqane vart8"
+                    # Mark the commit with a "${RELEASE_BRANCH_NAME}-ci-success" tag
+                    git tag --force "${RELEASE_BRANCH_NAME}-ci-success" $revision
+                    git push --force --tags
+        fi
+    done
+
    
-    # Sleep for 15 seconds before checking for new revisions again
-    sleep 15
+                # Sleep for 15 seconds before checking for new revisions again
+                sleep 15
 done
