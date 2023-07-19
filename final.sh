@@ -25,11 +25,15 @@ if [ $# -ne 5 ]; then
 fi
 
 CODE_REPO_URL="$1"
-echo 'CODE_REPO_URL="'+$1+'"'
+echo 'CODE_REPO_URL="'$1'"'
 DEV_BRANCH_NAME="$2"
+echo 'DEV_BRANCH_NAME="'$2'"'
 RELEASE_BRANCH_NAME="$3"
+echo 'RELEASE_BRANCH_NAME="'$3'"'
 HTML_REPO_URL="$4"
+echo 'HTML_REPO_URL="'$4'"'
 HTML_BRANCH_NAME="$5"
+echo 'HTML_BRANCH_NAME="'$5'"'
 
 
 
