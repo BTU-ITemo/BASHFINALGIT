@@ -75,15 +75,15 @@ echo 'HTML_BRANCH_NAME="'$5'"'
 
 
 
-# cd "$(dirname "$0")"
+cd "$(dirname "$0")"
 
-# REPOSITORY_PATH_CODE=$(mktemp --directory)
-# REPOSITORY_PATH_REPORT=$(mktemp --directory)
-# PYTEST_REPORT_PATH=$(mktemp)
-# BLACK_OUTPUT_PATH=$(mktemp)
-# BLACK_REPORT_PATH=$(mktemp)
-# PYTEST_RESULT=0
-# BLACK_RESULT=0
+REPOSITORY_PATH_CODE=$(mktemp --directory)
+REPOSITORY_PATH_REPORT=$(mktemp --directory)
+PYTEST_REPORT_PATH=$(mktemp)
+BLACK_OUTPUT_PATH=$(mktemp)
+BLACK_REPORT_PATH=$(mktemp)
+PYTEST_RESULT=0
+BLACK_RESULT=0
 
 
 # Function to check if a repository exists
@@ -294,20 +294,23 @@ echo 'HTML_BRANCH_NAME="'$5'"'
 
 
 
-# git clone git@github.com:${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}.git $REPOSITORY_PATH_CODE
-# pushd $REPOSITORY_PATH_CODE
-# git switch $REPOSITORY_BRANCH_CODE
+git clone $CODE_REPO_URL $REPOSITORY_PATH_CODE
+pushd $REPOSITORY_PATH_CODE
+git switch $DEV_BRANCH_NAME
 
 
-# while true; do
-#     # Fetch latest changes from the code repository
-#     git fetch origin
+while true; do
+    # Fetch latest changes from the code repository
+    git fetch origin
 
-#     # Get the commit hash of the last processed revision
-#     last_commit_hash=$(git rev-parse HEAD)
+    # Get the commit hash of the last processed revision
+    last_commit_hash=$(git rev-parse HEAD)
 
-#     # Get the list of new revisions
-#     revisions=$(git rev-list $last_commit_hash..origin/$REPOSITORY_BRANCH_CODE --reverse)
+    # Get the list of new revisions
+    revisions=$(git rev-list $last_commit_hash..origin/$DEV_BRANCH_NAME --reverse)
+
+    # Print the list of revisions
+    echo "$revisions"
 
 #     for revision in $revisions; do
 #         # Run pytest for the revision
@@ -415,7 +418,7 @@ echo 'HTML_BRANCH_NAME="'$5'"'
 #                     git tag --force "${REPOSITORY_BRANCH_CODE}-ci-success" $revision
 #                     git push --force --tags
 #         fi
-#     done
+    done
 
             # Sleep for 15 seconds before checking for new revisions again
             sleep 15
