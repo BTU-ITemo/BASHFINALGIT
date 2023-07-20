@@ -345,24 +345,17 @@ LAST_COMMIT="$(git log -n 1 --format=%H)"
 #droebit
 
 while true; do
-    # # Fetch latest changes from the code repository
-    # git fetch origin
+    # Fetch latest changes from the code repository
+    git fetch origin
 
-    # # Get the commit hash of the last processed revision
-    # last_commit_hash=$(git rev-parse HEAD)
+    # Get the commit hash of the last processed revision
+    last_commit_hash=$(git rev-parse HEAD)
 
-    # # Get the list of new revisions
-    # revisions=$(git rev-list "$last_commit_hash..origin/$DEV_BRANCH_NAME" --reverse)
+    # Get the list of new revisions
+    revisions=$(git rev-list "$last_commit_hash..origin/$DEV_BRANCH_NAME" --reverse)
 
-    # # Print the list of revisions
-    # echo "$revisions"
-#droebit
-    git switch $DEV_BRANCH_NAME > /dev/null 2>&1
-    git fetch $1 $2 > /dev/null 2>&1
-    CHECK_COMMIT=$(git rev-parse FETCH_HEAD)
-    if [ "$CHECK_COMMIT" != "$LAST_COMMIT" ]; then
-        revisions=$(git log --pretty=format:"%H" --reverse $LAST_COMMIT..$CHECK_COMMIT)
-#droebit
+    # Print the list of revisions
+    echo "$revisions"
 
     for revision in $revisions; do
         # Run pytest for the revision
@@ -468,7 +461,7 @@ while true; do
             git push --force "$REMOTE_NAME" "$RELEASE_BRANCH_NAME" --tags
         fi
     done
- fi
+ 
     # Sleep for 15 seconds before checking for new revisions again
     sleep 15
 done
