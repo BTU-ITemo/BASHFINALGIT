@@ -468,7 +468,7 @@ while true; do
             git push --force "$REMOTE_NAME" "$RELEASE_BRANCH_NAME" --tags
         fi
     done
-
+ fi
     # Sleep for 15 seconds before checking for new revisions again
     sleep 15
 done
