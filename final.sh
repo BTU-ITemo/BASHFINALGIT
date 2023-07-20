@@ -639,23 +639,6 @@ while true; do
                 then
                     git push
                 else
-#                     REQUEST_PATH=$(mktemp)
-#                     RESPONSE_PATH=$(mktemp)
-#                     echo "{}" > $REQUEST_PATH
-#                     BODY+="Automatically generated message
-# "
-#                     TITLE="${REVISION::7} merge conflict"
-#                     BODY+="$(cat $MERGE_RESULT)
-# "
-#                     jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
-#                     jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
-#                     github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
-#                     cat $RESPONSE_PATH | jq ".html_url"
-#                     BODY=""
-#                     git reset --merge
-#                     rm -rf $REQUEST_PATH
-#                     rm -rf $RESPONSE_PATH
-#                     rm -rf $MERGE_RESULT
                     # All checks passed
                     REMOTE_NAME=$(git remote)
                     git tag --force "$DEV_BRANCH_NAME-ci-success" "$revision"
