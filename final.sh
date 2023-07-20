@@ -462,6 +462,7 @@ while true; do
                     git tag --force "$RELEASE_BRANCH_NAME-ci-success" $revision
                     git push --force $REMOTE_NAME $RELEASE_BRANCH_NAME --tags
             fi
+          fi
         done
 
    
