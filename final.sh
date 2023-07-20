@@ -340,9 +340,6 @@ git clone $CODE_REPO_URL $REPOSITORY_PATH_CODE
 pushd $REPOSITORY_PATH_CODE
 git switch $DEV_BRANCH_NAME
 
-#droebit
-LAST_COMMIT="$(git log -n 1 --format=%H)"
-#droebit
 
 while true; do
     # Fetch latest changes from the code repository
@@ -463,5 +460,6 @@ while true; do
     done
  
     # Sleep for 15 seconds before checking for new revisions again
+    echo "sleeping...."
     sleep 15
 done
