@@ -291,12 +291,12 @@ create_github_issue() {
         body+="${revision} failed unit and formatting tests."
         labels=("ci-pytest" "ci-black")
     elif ((pytest_result != 0)); then
-        title="${revision::7} failed unit tests."
-        body+="${revision} failed unit tests."
+        title="${revision::7} failed Pytest"
+        body+="${revision} failed Pytest"
         labels=("ci-pytest")
     else
-        title="${revision::7} failed formatting test."
-        body+="${revision} failed formatting test."
+        title="${revision::7} failed Black"
+        body+="${revision} failed Black"
         labels=("ci-black")
     fi
 
@@ -347,10 +347,10 @@ get_github_username() {
 #     git fetch origin
 
 #     # Get the commit hash of the last processed revision
-#     last_commit_hash=$(git rev-parse HEAD)
+#     LATEST_REVISION_hash=$(git rev-parse HEAD)
 
 #     # Get the list of new revisions
-#     revisions=$(git rev-list "$last_commit_hash..origin/$DEV_BRANCH_NAME" --reverse)
+#     revisions=$(git rev-list "$LATEST_REVISION_hash..origin/$DEV_BRANCH_NAME" --reverse)
 
 #     # Print the list of revisions
 #     echo "$revisions"
@@ -471,21 +471,21 @@ get_github_username() {
 git clone $CODE_REPO_URL $REPOSITORY_PATH_CODE
 cd $REPOSITORY_PATH_CODE
 git switch $DEV_BRANCH_NAME
-LAST_COMMIT="$(git log -n 1 --format=%H)"
+LATEST_REVISION="$(git log -n 1 --format=%H)"
 while true; do
     git switch $DEV_BRANCH_NAME > /dev/null 2>&1
     git fetch $1 $2 > /dev/null 2>&1
-    CHECK_COMMIT=$(git rev-parse FETCH_HEAD)
-    if [ "$CHECK_COMMIT" != "$LAST_COMMIT" ]; then
-        COMMITS=$(git log --pretty=format:"%H" --reverse $LAST_COMMIT..$CHECK_COMMIT)
-        echo "$COMMITS"
-        LAST_COMMIT=$CHECK_COMMIT
-        for COMMIT in $COMMITS; do
-            echo $COMMIT
+    WORKING_REVISION=$(git rev-parse FETCH_HEAD)
+    if [ "$WORKING_REVISION" != "$LATEST_REVISION" ]; then
+        REVISIONS=$(git log --pretty=format:"%H" --reverse $LATEST_REVISION..$WORKING_REVISION)
+        echo "$REVISIONS"
+        LATEST_REVISION=$WORKING_REVISION
+        for REVISION in $REVISIONS; do
+            echo $REVISION
             PYTEST_REPORT_PATH=$(mktemp)
             BLACK_OUTPUT_PATH=$(mktemp)
             BLACK_REPORT_PATH=$(mktemp)
-            git checkout $COMMIT
+            git checkout $REVISION
             AUTHOR_EMAIL=$(git log -n 1 --format="%ae" HEAD)
             if pytest --verbose --html=$PYTEST_REPORT_PATH --self-contained-html
             then
@@ -498,7 +498,7 @@ while true; do
                 git bisect good ${DEV_BRANCH_NAME}-ci-success
                 git bisect bad HEAD
                 git bisect run pytest
-                PYTEST_FIRST_BAD_COMMIT=$(git bisect view --pretty=%H)    
+                PYTEST_BAD_REVISION=$(git bisect view --pretty=%H)    
                 git bisect reset          
             fi
 
@@ -514,7 +514,7 @@ while true; do
                 git bisect good ${DEV_BRANCH_NAME}-ci-success
                 git bisect bad HEAD
                 git bisect run black --check --diff *.py
-                BLACK_FIRST_BAD_COMMIT=$(git bisect view --pretty=%H)
+                BLACK_BAD_REVISION=$(git bisect view --pretty=%H)
                 git bisect reset
             fi
             echo "\$PYTEST_RESULT = $PYTEST_RESULT \$BLACK_RESULT=$BLACK_RESULT"
@@ -528,13 +528,13 @@ while true; do
                 pushd $REPOSITORY_PATH_REPORT
                 git switch $HTML_BRANCH_NAME
                 REPORT_PATH="${COMMIT}-$(date +%s)"
-                mkdir --parents $REPORT_PATH
+                mkdir -p $REPORT_PATH
                 cp $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
                 if [ -s "$BLACK_REPORT_PATH" ]; then
                     cp $BLACK_REPORT_PATH "$REPORT_PATH/black.html"
                 fi
                 git add $REPORT_PATH
-                git commit -m "$COMMIT report."
+                git commit -m "$REVISION report."
                 git push
                 popd
             fi
@@ -564,42 +564,42 @@ while true; do
                     if (( $BLACK_RESULT != 0 ))
                     then
                         if [[ "$PYTEST_RESULT" -eq "5" ]]; then
-                            TITLE="${COMMIT::7} Unit tests do not exist in the repository or do not work correctly and formatting test failed."
-                            BODY+="${COMMIT} Unit tests do not exist in the repository or do not work correctly and formatting test failed.
+                            TITLE="${COMMIT::7} FAIL"
+                            BODY+="${COMMIT} FAIL
 "
-                            BODY+="first bad commit for pytest was $PYTEST_FIRST_BAD_COMMIT and for black $BLACK_FIRST_BAD_COMMIT
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION The first commit which Black failed was $BLACK_BAD_REVISION
 "
                             jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
                         else
                             TITLE="${COMMIT::7} failed unit and formatting tests."
                             BODY+="${COMMIT} failed unit and formatting tests.
 "                            
-                            BODY+="first bad commit for pytest was $PYTEST_FIRST_BAD_COMMIT and for black $BLACK_FIRST_BAD_COMMIT
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION The first commit which Black failed was $BLACK_BAD_REVISION
 "
                             jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
                         fi
                     else
                         if [[ "$PYTEST_RESULT" -eq "5" ]];
                         then
-                            TITLE="${COMMIT::7} Unit tests do not exist in the repository or do not work correctly and formatting test passed."
-                            BODY+="${COMMIT} Unit tests do not exist in the repository or do not work correctly and formatting test passed.
+                            TITLE="${COMMIT::7} FAIL"
+                            BODY+="${COMMIT} FAIL
 "
-                            BODY+="first bad commit for pytest was $PYTEST_FIRST_BAD_COMMIT 
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION 
 "
                         else
-                            TITLE="${COMMIT::7} failed unit tests."
-                            BODY+="${COMMIT} failed unit tests.
+                            TITLE="${COMMIT::7} failed Pytest"
+                            BODY+="${COMMIT} failed Pytest
 "
-                            BODY+="first bad commit for pytest was $PYTEST_FIRST_BAD_COMMIT 
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION 
 "
                         jq_update $REQUEST_PATH '.labels = ["ci-pytest"]'
                         fi
                     fi
                 else
-                    TITLE="${COMMIT::7} failed formatting test."
-                    BODY+="${COMMIT} failed formatting test.
+                    TITLE="${COMMIT::7} failed Black"
+                    BODY+="${COMMIT} failed Black
 "
-                    BODY+="first bad commit for black was $BLACK_FIRST_BAD_COMMIT
+                    BODY+="The first commit which Black failed was $BLACK_BAD_REVISION
 "
                     jq_update $REQUEST_PATH '.labels = ["ci-black"]'
                 fi
@@ -630,32 +630,40 @@ while true; do
                 rm -rf $REPORT_PATH
             else
                 REMOTE_NAME=$(git remote)
-                git tag --force "${DEV_BRANCH_NAME}-ci-success" $COMMIT
+                git tag --force "${DEV_BRANCH_NAME}-ci-success" $REVISION
                 git push --force $REMOTE_NAME $DEV_BRANCH_NAME --tags
                 MERGE_RESULT=$(mktemp) 
                 git checkout $RELEASE_BRANCH_NAME
                 git pull $REMOTE_NAME $RELEASE_BRANCH_NAME
-                if git merge $COMMIT > $MERGE_RESULT
+                if git merge $REVISION > $MERGE_RESULT
                 then
                     git push
                 else
-                    REQUEST_PATH=$(mktemp)
-                    RESPONSE_PATH=$(mktemp)
-                    echo "{}" > $REQUEST_PATH
-                    BODY+="Automatically generated message
-"
-                    TITLE="${COMMIT::7} merge conflict"
-                    BODY+="$(cat $MERGE_RESULT)
-"
-                    jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
-                    jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
-                    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
-                    cat $RESPONSE_PATH | jq ".html_url"
-                    BODY=""
-                    git reset --merge
-                    rm -rf $REQUEST_PATH
-                    rm -rf $RESPONSE_PATH
-                    rm -rf $MERGE_RESULT
+#                     REQUEST_PATH=$(mktemp)
+#                     RESPONSE_PATH=$(mktemp)
+#                     echo "{}" > $REQUEST_PATH
+#                     BODY+="Automatically generated message
+# "
+#                     TITLE="${COMMIT::7} merge conflict"
+#                     BODY+="$(cat $MERGE_RESULT)
+# "
+#                     jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
+#                     jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
+#                     github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
+#                     cat $RESPONSE_PATH | jq ".html_url"
+#                     BODY=""
+#                     git reset --merge
+#                     rm -rf $REQUEST_PATH
+#                     rm -rf $RESPONSE_PATH
+#                     rm -rf $MERGE_RESULT
+                    # All checks passed
+                    REMOTE_NAME=$(git remote)
+                    git tag --force "$DEV_BRANCH_NAME-ci-success" "$revision"
+                    git push --force "$REMOTE_NAME" "$DEV_BRANCH_NAME" --tags
+                    git checkout "$RELEASE_BRANCH_NAME"
+                    git pull "$REMOTE_NAME" "$RELEASE_BRANCH_NAME"
+                    git tag --force "$RELEASE_BRANCH_NAME-ci-success" "$revision"
+                    git push --force "$REMOTE_NAME" "$RELEASE_BRANCH_NAME" --tags
                 fi
             fi
         done
