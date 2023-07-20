@@ -8,11 +8,12 @@ if [[ "${BASH_TRACE:-0}" == "1" ]]; then
     set -o xtrace
 fi
 
-if env | grep -q '^GITHUB_PERSONAL_ACCESS_TOKEN='; then
-    echo "GITHUB_PERSONAL_ACCESS_TOKEN is set"
-else
+if [ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
     echo "GITHUB_PERSONAL_ACCESS_TOKEN is not set"
+else
+    echo "GITHUB_PERSONAL_ACCESS_TOKEN is set"
 fi
+
 
 
 # Check if all arguments are provided
@@ -84,6 +85,12 @@ BLACK_OUTPUT_PATH=$(mktemp)
 BLACK_REPORT_PATH=$(mktemp)
 PYTEST_RESULT=0
 BLACK_RESULT=0
+REPOSITORY_NAME_CODE=$(basename "$CODE_REPO_URL" .git)
+REPOSITORY_OWNER=$(echo "$CODE_REPO_URL" | awk -F':' '{print $2}' | awk -F'/' '{print $1}')
+REPORT_REPOSITORY_OWNER=$(echo "$REPORT_REPO_URL" | awk -F':' '{print $2}' | awk -F'/' '{print $1}')
+REPOSITORY_NAME_REPORT=$(basename "$REPORT_REPO_URL" .git)
+
+
 
 
 # Function to check if a repository exists
@@ -179,7 +186,25 @@ run_pytest() {
     else
         PYTEST_RESULT=$?
         echo "PYTEST FAILED $PYTEST_RESULT"
-       # cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
+        # cat $PYTEST_REPORT_PATH | pygmentize -l html -f console256 -O style=solarized-light
+        
+        # Start the bisect process
+        git bisect start
+        
+        # Mark the latest successful commit as good
+        git bisect good "${DEV_BRANCH_NAME}-ci-success"
+        
+        # Mark the current commit (HEAD) as bad
+        git bisect bad HEAD
+        
+        # Run the bisect process with pytest
+        git bisect run pytest
+        
+        # Get the first bad commit found by bisect
+        PYTEST_BAD_COMM=$(git bisect view --pretty=%H)
+        
+        # Reset the repository back to its original state
+        git bisect reset
     fi
 
 
@@ -202,6 +227,24 @@ run_black() {
         BLACK_RESULT=$?
         echo "BLACK FAILED $BLACK_RESULT"
         cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
+        
+        # Start the bisect process
+        git bisect start
+        
+        # Mark the latest successful commit as good
+        git bisect good "${DEV_BRANCH_NAME}-ci-success"
+        
+        # Mark the current commit (HEAD) as bad
+        git bisect bad HEAD
+        
+        # Run the bisect process with pytest
+        git bisect run black --check --diff *.py
+        
+        # Get the first bad commit found by bisect
+        BLACK_BAD_COMM=$(git bisect view --pretty=%H)
+        
+        # Reset the repository back to its original state
+        git bisect reset
     fi
     #echo "$BLACK_REPORT_PATH"
     # Return black result
@@ -321,101 +364,99 @@ while true; do
         black_result=$?
 
         if ((pytest_result != 0)) || ((black_result != 0)); then
-                    # Upload pytest and black reports to GitHub pages
-                    upload_report_to_github_pages "$revision"
+                AUTHOR_USERNAME=""
+                RESPONSE_PATH=$(mktemp)
+                github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" $RESPONSE_PATH
 
+                TOTAL_USER_COUNT=$(cat $RESPONSE_PATH | jq ".total_count")
 
-                    # Get the author email of the failed commit
-                    author_email=$(git log -n 1 --format="%ae" "$revision")
-                    echo "author email $author_email"
-                    AUTHOR_EMAIL=$author_email
-                    AUTHOR_USERNAME=""
-                    echo "username - $AUTHOR_USERNAME"
-                    
-                    author_username=$(get_github_username "$author_email")
-                    echo "$author_username"
-                    COMMIT_HASH=$revision
+                if [[ $TOTAL_USER_COUNT == 1 ]]
+                then
+                    USER_JSON=$(cat $RESPONSE_PATH | jq ".items[0]")
+                    AUTHOR_USERNAME=$(cat $RESPONSE_PATH | jq --raw-output ".items[0].login")
+                fi
 
-                    # Make API request to search for users
-                    RESPONSE_PATH=$(mktemp)
-                    github_api_get_request "https://api.github.com/search/users?q=$AUTHOR_EMAIL" "$RESPONSE_PATH"
+                REQUEST_PATH=$(mktemp)
+                RESPONSE_PATH=$(mktemp)
+                echo "{}" > $REQUEST_PATH
 
-                    TOTAL_USER_COUNT=$(jq -r '.total_count' "$RESPONSE_PATH")
+                BODY+="Automatically generated message
 
-                    if [[ $TOTAL_USER_COUNT == 1 ]]; then
-                        USER_JSON=$(jq '.items[0]' "$RESPONSE_PATH")
-                        AUTHOR_USERNAME=$(jq -r '.items[0].login' "$RESPONSE_PATH")
-                    fi
-
-                    echo "username gamotvili - $AUTHOR_USERNAME"
-
-                    #AUTHOR_USERNAME=$author_username
-
-                    echo "username statikur - $AUTHOR_USERNAME"
-
-                    REQUEST_PATH=$(mktemp)
-                    RESPONSE_PATH=$(mktemp)
-                    echo "{}" > "$REQUEST_PATH"
-
-                    BODY+="Automatically generated message"
-
-                    if ((pytest_result != 0)); then
-                        if ((black_result != 0)); then
-                            TITLE="${COMMIT_HASH::7} failed unit and formatting tests.
-        "
-                            BODY+="${COMMIT_HASH} failed unit and formatting tests
-        "
-                            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
+"
+                if (( $PYTEST_RESULT != 0 ))
+                then
+                    if (( $BLACK_RESULT != 0 ))
+                    then
+                        if [[ "$PYTEST_RESULT" -eq "5" ]]; then
+                            TITLE="${COMMIT::7} Failed"
+                            BODY+="${COMMIT} Failed
+"
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM The first commit which Black failed was $BLACK_BAD_COM
+"
+                            jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
                         else
-                            TITLE="${COMMIT_HASH::7} failed unit tests.
-        "
-                            BODY+="${COMMIT_HASH} failed unit tests
-        "
-                            jq_update "$REQUEST_PATH" '.labels = ["ci-pytest"]'
+                            TITLE="${COMMIT::7} failed pytest and black"
+                            BODY+="${COMMIT} failed pytest and black
+"                            
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM The first commit which Black failed was $BLACK_BAD_COM
+"
+                            jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
                         fi
                     else
-                        TITLE="${COMMIT_HASH::7} failed formatting test."
-                        BODY+="${COMMIT_HASH} failed formatting test"
-                        jq_update "$REQUEST_PATH" '.labels = ["ci-black"]'
+                        if [[ "$PYTEST_RESULT" -eq "5" ]];
+                        then
+                            TITLE="${COMMIT::7} Failed"
+                            BODY+="${COMMIT} Failed
+"
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM 
+"
+                        else
+                            TITLE="${COMMIT::7} failed pytest"
+                            BODY+="${COMMIT} failed pytest
+"
+                            BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM 
+"
+                        jq_update $REQUEST_PATH '.labels = ["ci-pytest"]'
+                        fi
                     fi
+                else
+                    TITLE="${COMMIT::7} failed black"
+                    BODY+="${COMMIT} failed black.
+"
+                    BODY+="The first commit which Black failed was $BLACK_BAD_COM
+"
+                    jq_update $REQUEST_PATH '.labels = ["ci-black"]'
+                fi
 
-                    BODY+="Pytest report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html
-        "
-                    BODY+="Black report: https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html
-        "
+                BODY+="Pytest report: https://${REPORT_REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/pytest.html
+"
+                if [ -s "$BLACK_REPORT_PATH" ]; then
+                    BODY+="Black report: https://${REPORT_REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME_REPORT}/$REPORT_PATH/black.html
+"
+                fi
+                jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
+                jq_update $REQUEST_PATH --arg body  "$BODY"  '.body = $body'
 
-                    jq_update "$REQUEST_PATH" --arg title "$TITLE" '.title = $title'
-                    jq_update "$REQUEST_PATH" --arg body "$BODY" '.body = $body'
+                if [[ ! -z $AUTHOR_USERNAME ]]
+                then
+                    jq_update $REQUEST_PATH --arg username "$AUTHOR_USERNAME"  '.assignees = [$username]'
+                fi
 
-                    if [[ ! -z $AUTHOR_USERNAME ]]; then
-                        jq_update "$REQUEST_PATH" --arg username "$AUTHOR_USERNAME" '.assignees = [$username]'
-                    fi
-
-                    echo "aqane"
-                    echo "$REQUEST_PATH"
-                    echo "$AUTHOR_USERNAME"
-                    echo "$RESPONSE_PATH"
-                    echo "!!!!!!!!!!!!!"
-
-                    github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" "$REQUEST_PATH" "$RESPONSE_PATH"
-                    cat "$RESPONSE_PATH" | jq -r '.html_url'
-
-                    rm "$RESPONSE_PATH"
-                    rm "$REQUEST_PATH"
-             
-
-            # Find the author's GitHub username
-            author_username=$(get_github_username $author_email)
-
-            # Create a GitHub issue with detailed description of the failure
-            create_github_issue $revision $pytest_result $black_result $author_username
-
+                # https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+                github_post_request "https://api.github.com/repos/${REPOSITORY_OWNER}/${REPOSITORY_NAME_CODE}/issues" $REQUEST_PATH $RESPONSE_PATH
+                cat $RESPONSE_PATH | jq ".html_url"
+                rm $RESPONSE_PATH
+                rm $REQUEST_PATH
+                BODY=""
+                rm -rf $PYTEST_REPORT_PATH
+                rm -rf $BLACK_OUTPUT_PATH
+                rm -rf $BLACK_REPORT_PATH
+                rm -rf $REPORT_PATH
         else
                     # All checks passed
-                    echo "aqane vart8"
-                    # Mark the commit with a "${RELEASE_BRANCH_NAME}-ci-success" tag
-                    git tag --force "${RELEASE_BRANCH_NAME}-ci-success" $revision
-                    git push --force --tags
+                REMOTE_NAME=$(git remote)
+                git tag --force "${DEV_BRANCH_NAME}-ci-success" $COMMIT
+                git push --force $REMOTE_NAME $DEV_BRANCH_NAME --tags
         fi
     done
 
