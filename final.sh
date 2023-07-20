@@ -281,14 +281,14 @@ create_github_issue() {
 }
 
 
-# get_github_username() {
-#     local email=$1
-#     local response=$(curl -s -H "Authorization: token $GITHUB_PERSONAL_ACCESS_TOKEN" \
-#         "https://api.github.com/search/users?q=$email+in:email")
+get_github_username() {
+    local email=$1
+    local response=$(curl -s -H "Authorization: token $GITHUB_PERSONAL_ACCESS_TOKEN" \
+        "https://api.github.com/search/users?q=$email+in:email")
 
-#     local username=$(echo "$response" | jq -r '.items[0].login')
-#     echo "$username"
-# }
+    local username=$(echo "$response" | jq -r '.items[0].login')
+    echo "$username"
+}
 
 
 
@@ -404,11 +404,11 @@ while true; do
                     rm "$REQUEST_PATH"
              
 
-            # # Find the author's GitHub username
-            # author_username=$(get_github_username $author_email)
+            # Find the author's GitHub username
+            author_username=$(get_github_username $author_email)
 
-            # # Create a GitHub issue with detailed description of the failure
-            # create_github_issue $revision $pytest_result $black_result $author_username
+            # Create a GitHub issue with detailed description of the failure
+            create_github_issue $revision $pytest_result $black_result $author_username
 
         else
                     # All checks passed
