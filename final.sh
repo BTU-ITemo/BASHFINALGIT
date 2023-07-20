@@ -386,15 +386,15 @@ get_github_username() {
 #             if (( $PYTEST_RESULT != 0 )); then
 #                 if (( $BLACK_RESULT != 0 )); then
 #                     if [[ "$PYTEST_RESULT" -eq "5" ]]; then
-#                         TITLE="${COMMIT::7} Failed"
-#                         BODY+="${COMMIT} Failed
+#                         TITLE="${REVISION::7} Failed"
+#                         BODY+="${REVISION} Failed
 # "
 #                         BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM The first commit which Black failed was $BLACK_BAD_COM
 # "
 #                         jq_update "$REQUEST_PATH" '.labels = ["ci-pytest", "ci-black"]'
 #                     else
-#                         TITLE="${COMMIT::7} failed pytest and black"
-#                         BODY+="${COMMIT} failed pytest and black
+#                         TITLE="${REVISION::7} failed pytest and black"
+#                         BODY+="${REVISION} failed pytest and black
 # "                            
 #                         BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM The first commit which Black failed was $BLACK_BAD_COM
 # "
@@ -402,14 +402,14 @@ get_github_username() {
 #                     fi
 #                 else
 #                     if [[ "$PYTEST_RESULT" -eq "5" ]]; then
-#                         TITLE="${COMMIT::7} Failed"
-#                         BODY+="${COMMIT} Failed
+#                         TITLE="${REVISION::7} Failed"
+#                         BODY+="${REVISION} Failed
 # "
 #                         BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM 
 # "
 #                     else
-#                         TITLE="${COMMIT::7} failed pytest"
-#                         BODY+="${COMMIT} failed pytest
+#                         TITLE="${REVISION::7} failed pytest"
+#                         BODY+="${REVISION} failed pytest
 # "
 #                         BODY+="The first commit which pytest failed was $PYTEST_BAD_COMM 
 # "
@@ -417,8 +417,8 @@ get_github_username() {
 #                     fi
 #                 fi
 #             else
-#                 TITLE="${COMMIT::7} failed black"
-#                 BODY+="${COMMIT} failed black.
+#                 TITLE="${REVISION::7} failed black"
+#                 BODY+="${REVISION} failed black.
 # "
 #                 BODY+="The first commit which Black failed was $BLACK_BAD_COM
 # "
@@ -527,7 +527,7 @@ while true; do
                 fi
                 pushd $REPOSITORY_PATH_REPORT
                 git switch $HTML_BRANCH_NAME
-                REPORT_PATH="${COMMIT}-$(date +%s)"
+                REPORT_PATH="${REVISION}-$(date +%s)"
                 mkdir -p $REPORT_PATH
                 cp $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
                 if [ -s "$BLACK_REPORT_PATH" ]; then
@@ -564,15 +564,15 @@ while true; do
                     if (( $BLACK_RESULT != 0 ))
                     then
                         if [[ "$PYTEST_RESULT" -eq "5" ]]; then
-                            TITLE="${COMMIT::7} FAIL"
-                            BODY+="${COMMIT} FAIL
+                            TITLE="${REVISION::7} FAIL"
+                            BODY+="${REVISION} FAIL
 "
                             BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION The first commit which Black failed was $BLACK_BAD_REVISION
 "
                             jq_update $REQUEST_PATH '.labels = ["ci-pytest", "ci-black"]'
                         else
-                            TITLE="${COMMIT::7} failed unit and formatting tests."
-                            BODY+="${COMMIT} failed unit and formatting tests.
+                            TITLE="${REVISION::7} failed unit and formatting tests."
+                            BODY+="${REVISION} failed unit and formatting tests.
 "                            
                             BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION The first commit which Black failed was $BLACK_BAD_REVISION
 "
@@ -581,14 +581,14 @@ while true; do
                     else
                         if [[ "$PYTEST_RESULT" -eq "5" ]];
                         then
-                            TITLE="${COMMIT::7} FAIL"
-                            BODY+="${COMMIT} FAIL
+                            TITLE="${REVISION::7} FAIL"
+                            BODY+="${REVISION} FAIL
 "
                             BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION 
 "
                         else
-                            TITLE="${COMMIT::7} failed Pytest"
-                            BODY+="${COMMIT} failed Pytest
+                            TITLE="${REVISION::7} failed Pytest"
+                            BODY+="${REVISION} failed Pytest
 "
                             BODY+="The first commit which pytest failed was $PYTEST_BAD_REVISION 
 "
@@ -596,8 +596,8 @@ while true; do
                         fi
                     fi
                 else
-                    TITLE="${COMMIT::7} failed Black"
-                    BODY+="${COMMIT} failed Black
+                    TITLE="${REVISION::7} failed Black"
+                    BODY+="${REVISION} failed Black
 "
                     BODY+="The first commit which Black failed was $BLACK_BAD_REVISION
 "
@@ -644,7 +644,7 @@ while true; do
 #                     echo "{}" > $REQUEST_PATH
 #                     BODY+="Automatically generated message
 # "
-#                     TITLE="${COMMIT::7} merge conflict"
+#                     TITLE="${REVISION::7} merge conflict"
 #                     BODY+="$(cat $MERGE_RESULT)
 # "
 #                     jq_update $REQUEST_PATH --arg title "$TITLE" '.title = $title'
