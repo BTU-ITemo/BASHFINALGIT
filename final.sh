@@ -455,11 +455,11 @@ while true; do
         else
                     # All checks passed
                 REMOTE_NAME=$(git remote)
-                git tag --force "$DEV_BRANCH_NAME-ci-success" $COMMIT
+                git tag --force "$DEV_BRANCH_NAME-ci-success" $revision
                 git push --force $REMOTE_NAME $DEV_BRANCH_NAME --tags
                 git checkout $RELEASE_BRANCH_NAME
                 git pull $REMOTE_NAME $RELEASE_BRANCH_NAME
-                git tag --force "$RELEASE_BRANCH_NAME-ci-success" $COMMIT
+                git tag --force "$RELEASE_BRANCH_NAME-ci-success" $revision
                 git push --force $REMOTE_NAME $RELEASE_BRANCH_NAME --tags
         fi
     done
