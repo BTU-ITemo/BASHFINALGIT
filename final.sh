@@ -523,10 +523,10 @@ while true; do
                 if  [ "$(ls -A "$REPOSITORY_PATH_REPORT")" ]; then
                     echo "Directory $REPOSITORY_PATH_REPORT exists and is not empty. Skipping cloning."
                 else
-                    git clone "$REPORT_REPO_URL" "$REPOSITORY_PATH_REPORT"
+                    git clone "$HTML_REPO_URL" "$REPOSITORY_PATH_REPORT"
                 fi
                 pushd $REPOSITORY_PATH_REPORT
-                git switch $REPORT_BRANCH_NAME
+                git switch $HTML_BRANCH_NAME
                 REPORT_PATH="${COMMIT}-$(date +%s)"
                 mkdir --parents $REPORT_PATH
                 cp $PYTEST_REPORT_PATH "$REPORT_PATH/pytest.html"
