@@ -87,8 +87,8 @@ PYTEST_RESULT=0
 BLACK_RESULT=0
 REPOSITORY_NAME_CODE=$(basename "$CODE_REPO_URL" .git)
 REPOSITORY_OWNER=$(echo "$CODE_REPO_URL" | awk -F':' '{print $2}' | awk -F'/' '{print $1}')
-REPORT_REPOSITORY_OWNER=$(echo "$REPORT_REPO_URL" | awk -F':' '{print $2}' | awk -F'/' '{print $1}')
-REPOSITORY_NAME_REPORT=$(basename "$REPORT_REPO_URL" .git)
+REPORT_REPOSITORY_OWNER=$(echo "$HTML_REPO_URL" | awk -F':' '{print $2}' | awk -F'/' '{print $1}')
+REPOSITORY_NAME_REPORT=$(basename "$HTML_REPO_URL" .git)
 
 
 
