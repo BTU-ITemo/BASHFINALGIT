@@ -470,10 +470,10 @@ get_github_username() {
 
 git clone $CODE_REPO_URL $REPOSITORY_PATH_CODE
 cd $REPOSITORY_PATH_CODE
-git switch $CODE_DEV_BRANCH_NAME
+git switch $DEV_BRANCH_NAME
 LAST_COMMIT="$(git log -n 1 --format=%H)"
 while true; do
-    git switch $CODE_DEV_BRANCH_NAME > /dev/null 2>&1
+    git switch $DEV_BRANCH_NAME > /dev/null 2>&1
     git fetch $1 $2 > /dev/null 2>&1
     CHECK_COMMIT=$(git rev-parse FETCH_HEAD)
     if [ "$CHECK_COMMIT" != "$LAST_COMMIT" ]; then
@@ -495,7 +495,7 @@ while true; do
                 PYTEST_RESULT=$?
                 echo "PYTEST FAILED $PYTEST_RESULT"
                 git bisect start
-                git bisect good ${CODE_DEV_BRANCH_NAME}-ci-success
+                git bisect good ${DEV_BRANCH_NAME}-ci-success
                 git bisect bad HEAD
                 git bisect run pytest
                 PYTEST_FIRST_BAD_COMMIT=$(git bisect view --pretty=%H)    
@@ -511,7 +511,7 @@ while true; do
                 echo "BLACK FAILED $BLACK_RESULT"
                 cat $BLACK_OUTPUT_PATH | pygmentize -l diff -f html -O full,style=solarized-light -o $BLACK_REPORT_PATH
                 git bisect start
-                git bisect good ${CODE_DEV_BRANCH_NAME}-ci-success
+                git bisect good ${DEV_BRANCH_NAME}-ci-success
                 git bisect bad HEAD
                 git bisect run black --check --diff *.py
                 BLACK_FIRST_BAD_COMMIT=$(git bisect view --pretty=%H)
@@ -630,8 +630,8 @@ while true; do
                 rm -rf $REPORT_PATH
             else
                 REMOTE_NAME=$(git remote)
-                git tag --force "${CODE_DEV_BRANCH_NAME}-ci-success" $COMMIT
-                git push --force $REMOTE_NAME $CODE_DEV_BRANCH_NAME --tags
+                git tag --force "${DEV_BRANCH_NAME}-ci-success" $COMMIT
+                git push --force $REMOTE_NAME $DEV_BRANCH_NAME --tags
                 MERGE_RESULT=$(mktemp) 
                 git checkout $CODE_RELEASE_BRANCH_NAME
                 git pull $REMOTE_NAME $CODE_RELEASE_BRANCH_NAME
