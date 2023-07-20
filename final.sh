@@ -633,8 +633,8 @@ while true; do
                 git tag --force "${DEV_BRANCH_NAME}-ci-success" $COMMIT
                 git push --force $REMOTE_NAME $DEV_BRANCH_NAME --tags
                 MERGE_RESULT=$(mktemp) 
-                git checkout $CODE_RELEASE_BRANCH_NAME
-                git pull $REMOTE_NAME $CODE_RELEASE_BRANCH_NAME
+                git checkout $RELEASE_BRANCH_NAME
+                git pull $REMOTE_NAME $RELEASE_BRANCH_NAME
                 if git merge $COMMIT > $MERGE_RESULT
                 then
                     git push
